@@ -1,0 +1,47 @@
+CREATE TRIGGER [dbo].[ActualizarInventarioDespuesDeMovimiento]
+ON [dbo].[MovimientoInventario]
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @IdArticulo INT, @IdBodegaOrigen INT, @IdBodegaDestino INT, @CantidadMovida INT, @StockActualOrigen INT, @StockActualDestino INT;
+
+      SELECT @IdArticulo = IdArticulo, @IdBodegaOrigen = IdBodegaOrigen, @IdBodegaDestino = IdBodegaDestino, @CantidadMovida = Cantidad
+    FROM inserted;
+
+    SELECT @StockActualOrigen = CantidadStock FROM Inventario WHERE IdArticulo = @IdArticulo AND IdBodega = @IdBodegaOrigen;
+    IF @CantidadMovida > @StockActualOrigen
+    BEGIN
+
+        RAISERROR ('La cantidad a pasar es mayor que el stock disponible en la bodega de origen', 16, 1);
+        ROLLBACK TRANSACTION; -- Deshacer la transacción para evitar cambios no deseados en la base de datos
+        RETURN; -- Salir del trigger
+    END
+
+   
+    UPDATE Inventario
+    SET CantidadStock = CantidadStock - @CantidadMovida
+    WHERE IdArticulo = @IdArticulo AND IdBodega = @IdBodegaOrigen;
+
+   
+    SELECT @StockActualDestino = CantidadStock FROM Inventario WHERE IdArticulo = @IdArticulo AND IdBodega = @IdBodegaDestino;
+
+    IF @StockActualDestino IS NOT NULL
+    BEGIN
+        
+        UPDATE Inventario
+        SET CantidadStock = CantidadStock + @CantidadMovida
+        WHERE IdArticulo = @IdArticulo AND IdBodega = @IdBodegaDestino;
+    END
+    ELSE
+    BEGIN
+        
+        INSERT INTO Inventario (IdArticulo, IdBodega, CantidadStock, UmbralMinimo)
+        VALUES (@IdArticulo, @IdBodegaDestino, @CantidadMovida, (SELECT UmbralMinimo FROM Inventario WHERE IdArticulo = @IdArticulo AND IdBodega = @IdBodegaOrigen));
+    END
+
+   
+    DELETE FROM Inventario
+    WHERE IdArticulo = @IdArticulo AND IdBodega = @IdBodegaOrigen AND CantidadStock = 0;
+END;

@@ -1,0 +1,35 @@
+CREATE TRIGGER [dbo].[trg_UpdateArticulo]
+ON [dbo].[Articulo]
+AFTER UPDATE
+AS
+BEGIN
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN deleted d ON i.IdArticulo = d.IdArticulo
+        WHERE 
+            i.Nombre <> d.Nombre OR
+            i.IdCategoria <> d.IdCategoria OR
+            i.PrecioCosto <> d.PrecioCosto OR
+            i.PrecioPromedio <> d.PrecioPromedio OR
+            i.CantidadActual <> d.CantidadActual
+    )
+    BEGIN
+       
+        INSERT INTO [dbo].[Trazabilidad] (IdArticulo, IdBodega, FechaRegistro, Detalles, IdTrazabilidadP)
+        SELECT 
+            i.IdArticulo,                    -- El ID del artículo actualizado
+            inv.IdBodega,                    -- La bodega del inventario si existe
+            GETDATE(),                       -- La fecha y hora actuales
+            'Actualizacion de Articulo',     -- Los detalles del registro
+            (
+                SELECT TOP 1 t.IdTrazabilidad
+                FROM [dbo].[Trazabilidad] t
+                WHERE t.IdArticulo = i.IdArticulo
+                ORDER BY t.IdTrazabilidad DESC
+            )                               
+        FROM inserted i
+        LEFT JOIN [dbo].[Inventario] inv ON i.IdArticulo = inv.IdArticulo;
+    END
+END

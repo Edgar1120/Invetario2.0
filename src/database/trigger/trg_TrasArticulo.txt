@@ -1,0 +1,13 @@
+CREATE TRIGGER [dbo].[trg_TrasArticulo]
+ON [dbo].[Articulo]
+AFTER INSERT
+AS
+BEGIN
+    -- Insertar un registro en la tabla Trazabilidad con la fecha actual y los detalles
+    INSERT INTO [dbo].[Trazabilidad] (IdArticulo, FechaRegistro, Detalles)
+    SELECT 
+        i.IdArticulo,             -- El ID del artículo recién insertado
+        CAST(GETDATE() AS DATE),  -- La fecha actual sin la hora
+        'Ingreso de articulo'     -- Los detalles del registro
+    FROM inserted i;
+END

@@ -1,0 +1,26 @@
+TRIGGER [dbo].[tr_ActualizarPrecioPromedio]
+ON [dbo].[Articulo]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+
+    DECLARE @IdArticulo INT, @PrecioCosto DECIMAL(10, 2), @CantidadActual INT;
+
+    IF EXISTS(SELECT * FROM inserted)
+    BEGIN
+        SELECT @IdArticulo = IdArticulo,
+               @PrecioCosto = PrecioCosto,
+               @CantidadActual = CantidadActual
+        FROM inserted;
+
+        UPDATE dbo.Articulo
+        SET PrecioPromedio = @PrecioCosto * @CantidadActual
+        WHERE IdArticulo = @IdArticulo;
+    END
+    ELSE
+    BEGIN
+        UPDATE dbo.Articulo
+        SET PrecioPromedio = 0 
+        WHERE IdArticulo IN (SELECT IdArticulo FROM deleted);
+    END
+END;

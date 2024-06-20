@@ -1,0 +1,17 @@
+CREATE TRIGGER [dbo].[trg_TrasInventario]
+ON [dbo].[Inventario]
+AFTER INSERT
+AS
+BEGIN
+    INSERT INTO [dbo].[Trazabilidad] (IdArticulo, IdBodega, FechaRegistro, Detalles, IdTrazabilidadP)
+    SELECT 
+        i.IdArticulo,                       -- El ID del artículo del nuevo inventario
+        i.IdBodega,                        -- El ID de la bodega del nuevo inventario
+        CAST(GETDATE() AS DATE),           -- La fecha actual sin la hora
+        'Ingreso de articulo en el inventario y bodega', -- Los detalles del registro
+        (SELECT TOP 1 IdTrazabilidad       -- Obtener el IdTrazabilidad anterior para el mismo IdArticulo
+         FROM Trazabilidad
+         WHERE IdArticulo = i.IdArticulo
+         ORDER BY IdTrazabilidad DESC)     -- Ordenar por IdTrazabilidad en orden descendente y tomar el primero
+    FROM inserted i;
+END

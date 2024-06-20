@@ -1,0 +1,21 @@
+CREATE TRIGGER [dbo].[trg_MovimientoInventario]
+ON [dbo].[MovimientoInventario]
+AFTER INSERT
+AS
+BEGIN
+
+    INSERT INTO [dbo].[Trazabilidad] (IdArticulo, IdBodega, FechaRegistro, Detalles, IdTrazabilidadP)
+    SELECT 
+        i.IdArticulo,                       
+        i.IdBodegaOrigen,                        
+        GETDATE(),           
+        'Se realizó un movimiento de inventario ', 
+        (SELECT TOP 1 IdTrazabilidad       
+         FROM Trazabilidad
+         WHERE IdArticulo = i.IdArticulo
+         ORDER BY IdTrazabilidad DESC)    
+    FROM inserted i
+    WHERE i.IdBodegaOrigen IS NOT NULL;
+
+    
+END

@@ -1,0 +1,24 @@
+CREATE TRIGGER [dbo].[tr_Auditoria_Bodega]
+ON [dbo].[Bodega]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    DECLARE @Usuario VARCHAR(100), @Rol VARCHAR(50), @TipoAccion VARCHAR(50)
+
+
+    SELECT @Usuario = USER_ID()
+	SELECT @Rol = Rol From Usuario WHERE dbo.Usuario.IdUsuario = @Usuario
+
+    IF EXISTS (SELECT * FROM inserted)
+    BEGIN
+        IF EXISTS (SELECT * FROM deleted)
+            SET @TipoAccion = 'UPDATE'
+        ELSE
+            SET @TipoAccion = 'INSERT'
+    END
+    ELSE
+        SET @TipoAccion = 'DELETE'
+
+    INSERT INTO Auditoria (Usuario, Rol, TablaAfectada, Accion, IdAfectado)
+    VALUES (@Usuario, @Rol, 'Bodega', @TipoAccion, (SELECT COALESCE(i.IdBodega, d.IdBodega) FROM inserted i FULL JOIN deleted d ON i.IdBodega = d.IdBodega))
+END;

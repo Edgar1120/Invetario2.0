@@ -1,0 +1,23 @@
+TRIGGER [dbo].[tr_Auditoria_Inventario]
+ON [dbo].[Inventario]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    DECLARE @Usuario VARCHAR(100), @Rol VARCHAR(50), @TipoAccion VARCHAR(50)
+
+    SELECT @Usuario = ORIGINAL_LOGIN()
+	SELECT @Rol = Rol FROM Usuario WHERE Nombre = @Usuario
+
+    IF EXISTS (SELECT * FROM inserted)
+    BEGIN
+        IF EXISTS (SELECT * FROM deleted)
+            SET @TipoAccion = 'UPDATE'
+        ELSE
+            SET @TipoAccion = 'INSERT'
+    END
+    ELSE
+        SET @TipoAccion = 'DELETE'
+
+    INSERT INTO Auditoria (Usuario, Rol, TablaAfectada, Accion, IdAfectado)
+    VALUES (@Usuario, @Rol, 'Inventario', @TipoAccion, (SELECT COALESCE(i.IdInventario, d.IdInventario) FROM inserted i FULL JOIN deleted d ON i.IdInventario = d.IdInventario))
+END;
